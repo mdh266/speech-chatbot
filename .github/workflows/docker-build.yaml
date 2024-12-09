@@ -24,5 +24,5 @@ jobs:
 
       - name: Build & Push Docker
         run: | 
-          docker build -t mdh266/thirdapp .
-          docker push mdh266/thirdapp 
+          docker build -t mdh266/thirdapp:cloudrun .
+          docker push mdh266/thirdapp:cloudrun 
