@@ -13,6 +13,7 @@ play_ht_user_id = os.getenv("PLAY_HT_USER_ID")
 
 def main():
 
+    st.markdown("Ask A Question:")
     question = st.audio_input("Record a voice message")
 
     client = Groq()
@@ -71,6 +72,7 @@ def main():
             response = requests.post(url, json=payload, headers=headers)
 
             if response:
+                st.markdown("Play AI Response:")
                 st.audio(response.content, "audio/wav")
 
 if __name__ == "__main__":
