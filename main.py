@@ -1,5 +1,5 @@
 import streamlit as st
-import requests
+from google.cloud import texttospeech
 from groq import Groq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_groq import ChatGroq
@@ -7,9 +7,7 @@ import os
 from typing import Iterator, List, Dict, Tuple
 
 groq_api = os.getenv("GROQ_API_KEY")
-play_ht_api = os.getenv("PLAY_HT_API")
-play_ht_user_id = os.getenv("PLAY_HT_USER_ID")
-
+google_api = os.getenv("GOOGLE_API_KEY")
 
 
 def tuplify(history: List[Dict[str, str]]) -> List[Tuple[str, str]]:
@@ -71,29 +69,25 @@ def main():
 
             st.session_state.messages.append({"role": "ai", "content": answer})
         
-            url = "https://api.play.ht/api/v2/tts/stream"
+            client = texttospeech.TextToSpeechClient(client_options={"api_key": google_api})
 
-            payload = {
-                "voice": "s3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json",
-                "output_format": "mp3",
-                "text": answer,
-                "voice_2": "s3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json",
-                "voice_engine": "PlayDialog",
-                "turn_prefix_2": "Town Mouse:",
-                "turn_prefix": "Country Mouse:"
-            }
-            headers = {
-                "accept": "audio/mpeg",
-                "content-type": "application/json",
-                "AUTHORIZATION": play_ht_api,
-                "X-USER-ID": play_ht_user_id
-            }
-            
-            response = requests.post(url, json=payload, headers=headers)
+            synthesis_input = texttospeech.SynthesisInput(text=answer)
+
+            voice = texttospeech.VoiceSelectionParams(
+                language_code="en-GB", name="en-GB-Journey-F"
+            )
+
+            audio_config = texttospeech.AudioConfig(
+                audio_encoding=texttospeech.AudioEncoding.MP3
+            )
+
+            response = client.synthesize_speech(
+                input=synthesis_input, voice=voice, audio_config=audio_config
+            )
 
             if response:
                 st.markdown("Play AI Response:")
-                st.audio(response.content, "audio/wav")
+                st.audio(response.audio_content, "audio/mp3")
 
 if __name__ == "__main__":
     main()
