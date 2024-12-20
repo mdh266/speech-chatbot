@@ -9,5 +9,7 @@ dependencies = [
     "langchain-groq>=0.2.1",
     "pyht>=0.1.8",
     "streamlit>=1.40.2",
-    "google-cloud-texttospeech==2.22.0"
+    "google-cloud-texttospeech==2.22.0",
+    "google-cloud-speech==2.29.0",
+    "google-cloud-translate==3.19.0"
 ]

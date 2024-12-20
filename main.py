@@ -1,11 +1,12 @@
 import streamlit as st
 from google.cloud import texttospeech, speech
+from google.cloud import translate_v2 as translate
 from groq import Groq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_groq import ChatGroq
 import os
 from typing import Iterator, List, Dict, Tuple
-from google.cloud import translate_v2 as translate
+
 
 groq_api = os.getenv("GROQ_API_KEY")
 google_api = os.getenv("GOOGLE_API_KEY")
@@ -37,7 +38,7 @@ def ask_question(llm: ChatGroq, history: List[Tuple[str, str]], question: str) -
 
 def translate_text(target: str, text: str) -> dict:
 
-    translate_client = translate.Client()
+    translate_client = translate.Client(client_options={"api_key": google_api})
 
     if isinstance(text, bytes):
         text = text.decode("utf-8")
