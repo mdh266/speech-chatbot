@@ -1,5 +1,5 @@
 import streamlit as st
-from google.cloud import texttospeech, speech
+from google.cloud import texttospeech, texttospeech_v1, speech
 from google.cloud import translate_v2 as translate
 from groq import Groq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -7,9 +7,6 @@ from langchain_groq import ChatGroq
 import os
 from typing import Iterator, List, Dict, Tuple
 
-
-groq_api = os.getenv("GROQ_API_KEY")
-google_api = os.getenv("GOOGLE_API_KEY")
 
 
 def tuplify(history: List[Dict[str, str]]) -> List[Tuple[str, str]]:
@@ -36,7 +33,8 @@ def ask_question(llm: ChatGroq, history: List[Tuple[str, str]], question: str) -
     
     return response.content
 
-def translate_text(target: str, text: str) -> dict:
+
+def translate_text(target: str, text: str, google_api: str) -> Dict[str, str]:
 
     translate_client = translate.Client(client_options={"api_key": google_api})
 
@@ -50,8 +48,53 @@ def translate_text(target: str, text: str) -> dict:
 
     return result
 
+def text_to_speech(
+    language_code: str,
+    name: str,
+    tts: texttospeech.TextToSpeechClient,
+    translated_answer: str
+) -> texttospeech_v1.types.cloud_tts.SynthesizeSpeechResponse:
+    
+    synthesis_input = texttospeech.SynthesisInput(text=translated_answer)
+
+    voice = texttospeech.VoiceSelectionParams(
+        language_code=language_code, name=name)
+
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3
+    )
+
+    response = tts.synthesize_speech(
+        input=synthesis_input, voice=voice, audio_config=audio_config
+    )
+
+    return response
+
+
+def speech_to_text(
+    language_code: str,
+    stt: speech.SpeechClient,
+    question: st.runtime.uploaded_file_manager.UploadedFile
+) -> str:
+
+    stt_config = speech.RecognitionConfig(
+            encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+            language_code=language_code)
+
+    audio = speech.RecognitionAudio(content=question.getvalue())
+
+    response = stt.recognize(config=stt_config, audio=audio)
+
+    text_question = response.results.pop().alternatives[0].transcript
+
+    return text_question
+
 
 def main():
+
+    groq_api = os.getenv("GROQ_API_KEY")
+    google_api = os.getenv("GOOGLE_API_KEY")
+
     def clear_session():
         st.session_state.messages = []
         st.session_state.english_messages = []
@@ -62,10 +105,8 @@ def main():
         answer = None
         translated_answer = None
 
-    
     if "messages" not in st.session_state:
         clear_session()
-
 
     llm = ChatGroq(
                 model="llama-3.3-70b-versatile",
@@ -93,21 +134,18 @@ def main():
             else:
                 stt_language_code="he-IL"
 
-            stt_config = speech.RecognitionConfig(
-                    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-                    language_code=stt_language_code)
-
-            audio = speech.RecognitionAudio(content=question.getvalue())
-
-            response = stt.recognize(config=stt_config, audio=audio)
-
-            text_question = response.results.pop().alternatives[0].transcript
+            text_question = speech_to_text(
+                language_code=stt_language_code,
+                stt=stt,
+                question=question)
 
             st.session_state.messages.append({"role": "human", 
                                               "content": f"Human: {text_question}"})
             
             if st.session_state.human_language == "Hebrew":
-                english_question = translate_text("en", text_question ).get("translatedText")
+                english_question = translate_text("en", 
+                                                  text_question, 
+                                                  google_api).get("translatedText")
             else:
                 english_question = text_question
 
@@ -119,12 +157,14 @@ def main():
                 
                 answer = ask_question(llm=llm, history=history, question=english_question)
                 
-                st.session_state.english_messages.append({"role": "ai", "content": f"Bot: {answer}"})
+                st.session_state.english_messages.append({"role": "ai", 
+                                                          "content": f"Bot: {answer}"})
 
                 if st.session_state.ai_language == "Hebrew":
                     translated_answer = translate_text("he", answer ).get("translatedText")
-                    tts_language_code = "en-GB"
-                    tts_name = "en-GB-Journey-F"
+                    
+                    tts_language_code = "en-US"
+                    tts_name = "en-US-Journey-A"
                 else:
                     translated_answer = answer
                     tts_language_code = "he-IL"
@@ -132,20 +172,12 @@ def main():
 
                 st.session_state.messages.append({"role": "ai", 
                                                   "content": f"Bot: {translated_answer}"})
-                    
 
-                synthesis_input = texttospeech.SynthesisInput(text=translated_answer)
 
-                voice = texttospeech.VoiceSelectionParams(
-                    language_code=tts_language_code, name=tts_name)
-
-                audio_config = texttospeech.AudioConfig(
-                    audio_encoding=texttospeech.AudioEncoding.MP3
-                )
-
-                response = tts.synthesize_speech(
-                    input=synthesis_input, voice=voice, audio_config=audio_config
-                )
+                response = text_to_speech(language_code=tts_language_code,
+                                          name=tts_name,
+                                          tts=tts,
+                                          translated_answer=translated_answer)
 
                 if response:
                     st.markdown("Play AI Response:")
