@@ -30,14 +30,12 @@ def ask_question(history: List[Tuple[str, str]], question: str) -> str:
         ]
     )
 
-    new_prompt = prompt.invoke(
-           {
+    chain = prompt | llm 
+    
+    response = chain.invoke({
            "history": history,
            "question": question
-       }
-    )
-
-    response = llm.invoke(new_prompt)
+       })
     
     return response.content
 
