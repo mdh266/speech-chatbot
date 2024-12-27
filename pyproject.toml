@@ -1,7 +1,7 @@
 [project]
-name = "thirdapp"
+name = "ChatskisApp"
 version = "0.1.1"
-description = "A Serviceless Voice-To-Text Chat App"
+description = "A Serviceless Mulitmodal AI ChatBot"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -10,5 +10,6 @@ dependencies = [
     "streamlit>=1.40.2",
     "google-cloud-texttospeech==2.22.0",
     "google-cloud-speech==2.29.0",
-    "google-cloud-translate==3.19.0"
+    "google-cloud-translate==3.19.0",
+    "python-dotenv==1.0.1",
 ]

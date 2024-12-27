@@ -10,3 +10,6 @@ wheels/
 .venv
 *.wav
 .env
+*.ipynb_checkpoints
+*.DS_Store
+*.conda

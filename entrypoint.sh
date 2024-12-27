@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 streamlit run \
-    main.py \
+    src/main.py \
     --server.port 8080 \
     --server.address 0.0.0.0 \
     --server.headless true \
