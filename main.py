@@ -8,13 +8,27 @@ import os
 from typing import Iterator, List, Dict, Tuple
 from dataclasses import dataclass
 
+lang_code_map = {
+    "English": "en-US",
+    "Hebrew": "he-IL"
+}
+
+tts_name_map = {
+    "English": "en-US-Journey-F",
+    "Hebrew": "he-IL-Standard-A"
+}
 
 def tuplify(history: List[Dict[str, str]]) -> List[Tuple[str, str]]:
     return [(d['role'], d['content']) for d in history]
 
 
 @st.cache_data
-def ask_question(history: List[Tuple[str, str]], question: str) -> str:
+def ask_question(
+    history: List[Tuple[str, str]], 
+    question: str,
+    ai_language: str,
+    google_api: str
+) -> str:
     llm = ChatGroq(
             model="llama-3.3-70b-versatile",
             temperature=0,
@@ -37,7 +51,16 @@ def ask_question(history: List[Tuple[str, str]], question: str) -> str:
            "question": question
        })
     
-    return response.content
+    answer = response.content
+    translated_response = answer
+
+    if ai_language != "English":
+        translated_response = translate_text(
+                                    target="he", 
+                                    text=answer, 
+                                    google_api=google_api)
+
+    return answer, translated_response
 
 
 @st.cache_data
@@ -52,13 +75,12 @@ def translate_text(target: str, text: str, google_api: str) -> Dict[str, str]:
     # will return a sequence of results for each text.
     result = translate_client.translate(text, target_language=target)
 
-    return result
+    return result.get("translatedText")
 
 
 @st.cache_data
 def text_to_speech(
-    language_code: str,
-    name: str,
+    ai_language: str,
     google_api: str,
     translated_answer: str
 ) -> texttospeech_v1.types.cloud_tts.SynthesizeSpeechResponse:
@@ -68,7 +90,7 @@ def text_to_speech(
     synthesis_input = texttospeech.SynthesisInput(text=translated_answer)
 
     voice = texttospeech.VoiceSelectionParams(
-        language_code=language_code, name=name)
+        language_code=lang_code_map[ai_language], name=tts_name_map[ai_language])
 
     audio_config = texttospeech.AudioConfig(
         audio_encoding=texttospeech.AudioEncoding.MP3
@@ -83,7 +105,7 @@ def text_to_speech(
 
 @st.cache_data
 def speech_to_text(
-    language_code: str,
+    human_language: str,
     google_api: str,
     question: st.runtime.uploaded_file_manager.UploadedFile
 ) -> str:
@@ -92,7 +114,7 @@ def speech_to_text(
 
     stt_config = speech.RecognitionConfig(
             encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-            language_code=language_code)
+            language_code=lang_code_map[human_language])
 
     audio = speech.RecognitionAudio(content=question.getvalue())
 
@@ -100,7 +122,14 @@ def speech_to_text(
 
     text_question = response.results.pop().alternatives[0].transcript
 
-    return text_question
+    english_question = text_question
+
+    if human_language != "English":
+        english_question = translate_text(target="en",
+                                          text=text_question, 
+                                          google_api=google_api)
+        
+    return text_question, english_question
 
 
 def create_audio():
@@ -111,8 +140,6 @@ def clear_session():
     st.session_state.messages = []
     st.session_state.english_messages = []
     st.session_state.transcribe = None
-    st.session_state.text_question = None
-    st.session_state.question = None
 
 
 def main(debug: bool = False):
@@ -126,104 +153,86 @@ def main(debug: bool = False):
     if "messages" not in st.session_state:
         clear_session()
     
-    
+
+    st.markdown("# AI Speech Chatbot")
+    st.markdown("Have a conversation with an Artifical Intelligence Bot in English or Hebrew")
+
     col1, col2 = st.columns(2, gap="large")
 
+    response = None
+    transcribe = None
+
     with col1:
-        st.session_state.human_language = st.selectbox("Human Language:", ("English", "Hebrew"))
-        st.session_state.ai_language = st.selectbox("AI Language:", ("English", "Hebrew"))
-        st.session_state.transcribe = st.checkbox("Transcribe Conversation", key="disabled")
+        st.markdown("### Submit A Question")
+        
+        with st.form("conversation"):
+            
+            human_language = st.selectbox("Human Language:", ("English", "Hebrew"))
+            ai_language = st.selectbox("AI Language:", ("English", "Hebrew"))
+            transcribe = st.checkbox("Transcribe Conversation")
     
-        st.markdown("Ask A Question:")
-        st.session_state.question = create_audio()
+            
+            question = create_audio()
+            submitted = st.form_submit_button("Submit")
 
-        if st.session_state.question:
-            if st.session_state.human_language == "English":
-                stt_language_code="en-US" 
-            else:
-                stt_language_code="he-IL"
+        if submitted and question:
 
-            st.session_state.text_question = speech_to_text(
-                language_code=stt_language_code,
-                google_api=google_api,
-                question=st.session_state.question)
+            text_question, english_question = speech_to_text(
+                                                human_language=human_language,
+                                                google_api=google_api,
+                                                question=question)
             
             st.session_state.messages.append({
                 "role": "human", 
-                "content": f"Human: {st.session_state.text_question}"
+                "content": f"Human: {text_question}"
+            })
+
+            st.session_state.english_messages.append({
+                "role": "human", 
+                "content": f"Human: {english_question}"
             })
             
-            if st.session_state.human_language == "Hebrew":
-                english_question = translate_text(target="en", 
-                                                text=st.session_state.text_question, 
-                                                google_api=google_api).get("translatedText")
-            else:
-                english_question = st.session_state.text_question
+            history = tuplify(st.session_state.english_messages)
+            
+            answer, translated_answer = ask_question(
+                                            history=history, 
+                                            question=english_question,
+                                            ai_language=ai_language,
+                                            google_api=google_api)
 
-            if english_question:
-                history = tuplify(st.session_state.english_messages)
-
-                st.session_state.english_messages.append({
-                    "role": "human", 
-                    "content": f"Human: {english_question}"
-                })
-                
-                answer = ask_question(history=history, question=english_question)
-                
-                st.session_state.english_messages.append({"role": "ai", 
-                                                        "content": f"Bot: {answer}"})
-
-                if st.session_state.ai_language == "Hebrew":
-                    translated_answer = translate_text(target="he", 
-                                                    text=answer, 
-                                                    google_api=google_api).get("translatedText")
-                    
-                    tts_language_code = "en-US"
-                    tts_name = "en-US-Journey-A"
-                else:
-                    translated_answer = answer
-                    tts_language_code = "he-IL"
-                    tts_name = "he-IL-Standard-A"
-
-                st.session_state.messages.append({
+            st.session_state.english_messages.append({
                     "role": "ai", 
-                    "content": f"Bot: {translated_answer}"
-                })
+                    "content": f"Bot: {answer}"
+            })
+
+            st.session_state.messages.append({
+                "role": "ai", 
+                "content": f"Bot: {translated_answer}"
+            })
+
+            response = text_to_speech(
+                            ai_language=ai_language,
+                            google_api=google_api,
+                            translated_answer=translated_answer)
 
 
-                response = text_to_speech(language_code=tts_language_code,
-                                        name=tts_name,
-                                        google_api=google_api,
-                                        translated_answer=translated_answer)
-
-                if response:
-                    st.markdown("Play AI Response:")
-                    st.audio(response.audio_content, "audio/mp3")
 
         st.button("Clear Conversation", on_click=clear_session) 
 
-                
+        
         with col2:
-            if st.session_state.transcribe:
-                    # Display chat messages from history on app rerun
+            with st.container(border=True):
+                if response:
+                    st.markdown("Play Latest AI Response:")
+                    st.audio(response.audio_content, "audio/mp3")
+
                 
-                for message in st.session_state.messages:
-                    with st.chat_message(message["role"]):
-                            st.markdown(message["content"])
+                    if transcribe:  
+                        st.markdown("Conversation History")
+                        for message in st.session_state.messages:
+                            with st.chat_message(message["role"]):
+                                    st.markdown(message["content"])
 
-        # css='''
-        # <style>
-        #     section.main>div {
-        #         padding-bottom: 1rem;
-        #     }
-        #     [data-testid="column"]>div>div>div>div>div {
-        #         overflow: auto;
-        #         height: 70vh;
-        #     }
-        # </style>
-        # '''
-
-        # st.markdown(css, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main(debug=True)
