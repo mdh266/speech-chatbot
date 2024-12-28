@@ -8,6 +8,8 @@ COPY src /app/src
 COPY pyproject.toml /app
 COPY entrypoint.sh /app
 RUN chmod +x /app/entrypoint.sh
-RUN pip install . --no-cache
+RUN pip install . --no-cache 
+
+EXPOSE 8080 
 
 ENTRYPOINT ["/app/entrypoint.sh"]
