@@ -1,11 +1,9 @@
-import streamlit as st
 from google.cloud import texttospeech, texttospeech_v1, speech
-from google.cloud import translate_v2 as translate
-from groq import Groq
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
+import streamlit as st
 from langchain_groq import ChatGroq
-import os
 from typing import Iterator, List, Dict, Tuple
+import os
 
 
 lang_code_map = {
@@ -28,11 +26,12 @@ def tuplify(history: List[Dict[str, str]]) -> List[Tuple[str, str]]:
 
 @st.cache_data
 def ask_question(
-    history: List[Tuple[str, str]], 
+    history: List[Tuple[str, str]],
     question: str,
-    ai_language: str,
-    google_api: str
+    human_language: str,
+    ai_language: str
 ) -> str:
+    
     llm = ChatGroq(
             model="llama-3.3-70b-versatile",
             temperature=0,
@@ -42,7 +41,8 @@ def ask_question(
     
     prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", "You are a helpful teacher having a conversation with a student."),
+            ("system", f"""You are a helpful teacher having a conversation with a student that speaks {human_language}.
+             Only reply back in {ai_language} even though the student only speaks in {human_language}."""),
             MessagesPlaceholder("history"),
             ("human", "{question}")
         ]
@@ -50,36 +50,44 @@ def ask_question(
 
     chain = prompt | llm 
     
-    response = chain.invoke({
-           "history": history,
-           "question": question
-       })
+    response = chain.invoke(
+                    {
+                        "history": history,
+                        "question": question
+                    }
+    )
     
     answer = response.content
-    translated_response = answer
 
-    if ai_language != "English":
-        translated_response = translate_text(
-                                    target="he", 
-                                    text=answer, 
-                                    google_api=google_api)
-
-    return answer, translated_response
+    return answer
 
 
 @st.cache_data
-def translate_text(target: str, text: str, google_api: str) -> Dict[str, str]:
+def translate_text(language: str, text: str) -> str:
+    if language not in ("English", "French", "Hebrew"):
+        raise ValueError(f"Not valid language choice: {language}")
+    
+    template = "Translate the following into {language} and only return the translated text: {text}"
 
-    translate_client = translate.Client(client_options={"api_key": google_api})
+    llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            temperature=0,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2)
 
-    if isinstance(text, bytes):
-        text = text.decode("utf-8")
+    prompt = PromptTemplate.from_template(template)
 
-    # Text can also be a sequence of strings, in which case this method
-    # will return a sequence of results for each text.
-    result = translate_client.translate(text, target_language=target)
+    translation_chain = prompt | llm 
 
-    return result.get("translatedText")
+    result = translation_chain.invoke(
+            {
+                    "language": language,
+                    "text": text,
+            }
+    )
+
+    return result.content
 
 
 @st.cache_data
@@ -113,7 +121,9 @@ def speech_to_text(
     google_api: str,
     question: st.runtime.uploaded_file_manager.UploadedFile
 ) -> str:
-
+    if human_language not in ("English", "Hebrew", "French"):
+        raise ValueError(f"Language choice not supported: {human_language}")
+    
     stt = speech.SpeechClient(client_options={"api_key": google_api})
 
     stt_config = speech.RecognitionConfig(
@@ -126,14 +136,7 @@ def speech_to_text(
 
     text_question = response.results.pop().alternatives[0].transcript
 
-    english_question = text_question
-
-    if human_language != "English":
-        english_question = translate_text(target="en",
-                                          text=text_question, 
-                                          google_api=google_api)
-        
-    return text_question, english_question
+    return text_question
 
 
 def create_audio():
@@ -142,5 +145,4 @@ def create_audio():
 
 def clear_session():
     st.session_state.messages = []
-    st.session_state.english_messages = []
     st.session_state.transcribe = None
