@@ -1,5 +1,10 @@
 from google.cloud import texttospeech, texttospeech_v1, speech
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
+from langchain_core.prompts import (ChatPromptTemplate, 
+                                    MessagesPlaceholder, 
+                                    PromptTemplate)
+
+from langchain_core.messages import SystemMessage, HumanMessage
+
 import streamlit as st
 from langchain_groq import ChatGroq
 from typing import Iterator, List, Dict, Tuple
@@ -41,10 +46,10 @@ def ask_question(
     
     prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", f"""You are a helpful teacher having a conversation with a student that speaks {human_language}.
+            SystemMessage(content=f"""You are a helpful teacher having a conversation with a student that speaks {human_language}.
              Only reply back in {ai_language} even though the student only speaks in {human_language}."""),
             MessagesPlaceholder("history"),
-            ("human", "{question}")
+            HumanMessage(content="{question}")
         ]
     )
 
