@@ -9,7 +9,7 @@ import streamlit as st
 from langchain_groq import ChatGroq
 from typing import Iterator, List, Dict, Tuple
 import os
-
+import asyncio
 
 lang_code_map = {
     "English": "en-US",
