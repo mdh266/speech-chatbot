@@ -1,6 +1,5 @@
 import os 
 import streamlit as st
-import asyncio
 from utils import (text_to_speech,
                    speech_to_text,
                    ask_question,
@@ -9,7 +8,7 @@ from utils import (text_to_speech,
                    clear_session)
 
 
-async def main(debug: bool = False):
+def main(debug: bool = False):
     if debug:
         from dotenv import load_dotenv
         load_dotenv()
@@ -64,7 +63,7 @@ async def main(debug: bool = False):
                 "content": f"Bot: {answer}"
             })
 
-            response = await text_to_speech(
+            response = text_to_speech(
                                 ai_language=ai_language,
                                 google_api=google_api,
                                 translated_answer=answer)
@@ -87,4 +86,4 @@ async def main(debug: bool = False):
 
 
 if __name__ == "__main__":
-    asyncio.run(main(debug=True))
+    main(debug=False)
