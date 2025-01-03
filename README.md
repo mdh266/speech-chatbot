@@ -12,6 +12,8 @@ In part 1 I'll go over building the app and running it locally by using [LangCha
 ------------
 In Part 2, I'll cover how to deploy this app using [Docker](https://www.docker.com/) for containerization which will allow us to run the app both locally and on the cloud. Then well cover [GitHub Actions](https://github.com/features/actions) for automatically building the image and pushing it to [Docker Hub](https://hub.docker.com/) where it can be pulled and run on [Google Cloud Run](https://cloud.google.com/run) to create a serverless application.
 
+### Running The App Locally
+--------------------------------------
 To run the app locally you'll have to get API keys for Groq and Google API.
 
 You can then build and run the app with Docker,
