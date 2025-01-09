@@ -14,14 +14,26 @@ import asyncio
 lang_code_map = {
     "English": "en-US",
     "Hebrew": "he-IL",
-    "French": "fr-FR"
+    "French": "fr-FR",
+    "German": "de-DE",
+    "Spanish": "es-ES",
+    "Russian": "ru-RU",
+    "Mandarin": "cmn-CN",
+    "Japanese": "ja-JP",
+    "Korean": " ko-KR"
 }
 
 
 tts_name_map = {
     "English": "en-US-Journey-F",
     "Hebrew": "he-IL-Standard-A",
-    "French": "fr-FR-Standard-A"
+    "French": "fr-FR-Standard-A",
+    "German": "de-DE-Standard-F",
+    "Spanish": "es-ES-Standard-C",
+    "Russian": "ru-RU-Standard-C",
+    "Mandarin": "cmn-CN-Standard-A",
+    "Japanese": "ja-JP-Standard-C",
+    "Korean": "ko-KR-Standard-B"
 }
 
 
@@ -69,7 +81,7 @@ def ask_question(
 
 @st.cache_data
 def translate_text(language: str, text: str) -> str:
-    if language not in ("English", "French", "Hebrew"):
+    if language not in tuple(lang_code_map.keys()):
         raise ValueError(f"Not valid language choice: {language}")
     
     template = "Translate the following into {language} and only return the translated text: {text}"
@@ -126,7 +138,7 @@ def speech_to_text(
     google_api: str,
     question: st.runtime.uploaded_file_manager.UploadedFile
 ) -> str:
-    if human_language not in ("English", "Hebrew", "French"):
+    if human_language not in tuple(lang_code_map.keys()):
         raise ValueError(f"Language choice not supported: {human_language}")
     
     stt = speech.SpeechClient(client_options={"api_key": google_api})

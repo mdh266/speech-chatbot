@@ -5,7 +5,8 @@ from utils import (text_to_speech,
                    ask_question,
                    create_audio,
                    tuplify,
-                   clear_session)
+                   clear_session,
+                   lang_code_map)
 
 
 def main(debug: bool = False):
@@ -33,8 +34,9 @@ def main(debug: bool = False):
         with st.form("conversation"):
             st.markdown("### Submit A Question")
             
-            human_language = st.selectbox("Human Language:", ("English", "Hebrew", "French"))
-            ai_language = st.selectbox("Bot Language:", ("English", "Hebrew", "French"))
+            languages = tuple(lang_code_map.keys())
+            human_language = st.selectbox("Human Language:", languages)
+            ai_language = st.selectbox("Bot Language:", languages)
             transcribe = st.checkbox("Transcribe Conversation")
     
             question = create_audio()
@@ -86,4 +88,4 @@ def main(debug: bool = False):
 
 
 if __name__ == "__main__":
-    main(debug=False)
+    main(debug=True)
