@@ -6,7 +6,8 @@ on:
       - "main"
     paths:
     - Dockerfile
-    - main.py
+    - src/main.py
+    - src/utils.py
     - .github/workflows/docker-build.yaml
 
 jobs:
