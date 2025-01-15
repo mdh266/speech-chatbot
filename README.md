@@ -26,5 +26,7 @@ Or using placing your api keys in as defined above in a file labeled `.env` and 
 
     docker compose up 
 
-You can the visit the website in your browser, https://localhost:8080.
+You can the visit the website in your browser, https://localhost:8080 and it will look like the below,
+
+![notebooks/images/ui.jpg](notebooks/images/ui.jpg)
 
