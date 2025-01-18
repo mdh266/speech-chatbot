@@ -15,7 +15,7 @@ on:
     - .github/workflows/docker-build.yaml
 
 jobs:
-  docker:
+  build-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -29,8 +29,8 @@ jobs:
 
       - name: Build & Push Docker
         run: | 
-          docker build -t ${{ env.DOCKER_IMAGE_URL }}:cloudrun .
-          docker push ${{ env.DOCKER_IMAGE_URL }}:cloudrun 
+          docker build -t ${{ env.DOCKER_IMAGE }}:cloudrun .
+          docker push ${{ env.DOCKER_IMAGE }}:cloudrun 
 
           - name: Google Cloud Auth
           uses: 'google-github-actions/auth@v2'
@@ -43,7 +43,7 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
             gcloud run deploy $SERVICE_NAME \
-            --image=${{ env.DOCKER_IMAGE_URL }}:cloudrun \
+            --image=${{ env.DOCKER_IMAGE }}:cloudrun \
             --set-env-vars=GROQ_API_KEY=${{ secrets.GROQ_API_KEY }},GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }} \
             --region=us-central1 \
             --project=${{ secrets.GOOGLE_PROJECT_ID }} 
