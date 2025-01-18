@@ -32,10 +32,10 @@ jobs:
           docker build -t ${{ env.DOCKER_IMAGE }}:cloudrun .
           docker push ${{ env.DOCKER_IMAGE }}:cloudrun 
 
-          - name: Google Cloud Auth
-          uses: 'google-github-actions/auth@v2'
-          with:
-            credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+      - name: Google Cloud Auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
   
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
