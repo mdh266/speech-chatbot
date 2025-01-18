@@ -2,7 +2,7 @@ name: streamlit-docker-build
 
 env:
   SERVICE_NAME: mikegpt
-  DOCKER_IMAGE: mdh266/mikegpt
+  DOCKER_IMAGE: mdh266/thirdapp
 
 on:
   push:
