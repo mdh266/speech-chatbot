@@ -4,6 +4,7 @@ from langchain_core.prompts import (ChatPromptTemplate,
                                     PromptTemplate)
 
 from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.output_parsers import StrOutputParser
 
 import streamlit as st
 from langchain_groq import ChatGroq
@@ -65,7 +66,7 @@ def ask_question(
         ]
     )
 
-    chain = prompt | llm 
+    chain = prompt | llm | StrOutputParser()
     
     response = chain.invoke(
                     {
@@ -73,10 +74,8 @@ def ask_question(
                         "question": question
                     }
     )
-    
-    answer = response.content
 
-    return answer
+    return response
 
 
 @st.cache_data
@@ -95,7 +94,7 @@ def translate_text(language: str, text: str) -> str:
 
     prompt = PromptTemplate.from_template(template)
 
-    translation_chain = prompt | llm 
+    translation_chain = prompt | llm | StrOutputParser()
 
     result = translation_chain.invoke(
             {
@@ -104,7 +103,7 @@ def translate_text(language: str, text: str) -> str:
             }
     )
 
-    return result.content
+    return result
 
 
 @st.cache_data
